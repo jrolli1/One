@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>National Geographic · Epic Forts — Fort Builder</title>
+  <meta name="description" content="Design, count, and share your National Geographic Epic Forts build with a drag-and-drop fort builder." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23ffcc00'/%3E%3Crect x='18' y='18' width='64' height='64' fill='none' stroke='%23000' stroke-width='10'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- ============ HEADER ============ -->
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <span class="natgeo-rect" aria-hidden="true"></span>
+      <div class="brand-text">
+        <span class="brand-eyebrow">NATIONAL GEOGRAPHIC</span>
+        <span class="brand-title">EPIC FORTS<sup>™</sup> · FORT BUILDER</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions no-print">
+      <button id="btn-help" class="btn btn-ghost" type="button" title="How it works">
+        <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 15.5a1.2 1.2 0 110-2.4 1.2 1.2 0 010 2.4zM13 13c0 .6-.4 1-1 1s-1-.4-1-1c0-1.8 2.4-2 2.4-3.5A1.4 1.4 0 0012 8a1.5 1.5 0 00-1.4 1c-.2.5-.6.8-1.1.6-.5-.2-.7-.7-.5-1.2A3.4 3.4 0 0112 6a3.3 3.3 0 013.4 3.5C15.4 11.6 13 12 13 13z"/></svg>
+        <span>Guide</span>
+      </button>
+      <button id="btn-print" class="btn btn-ghost" type="button" title="Print build sheet">
+        <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M6 9V3h12v6h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v3H6v-3H4a2 2 0 01-2-2v-6a2 2 0 012-2h2zm2-4v4h8V5H8zm0 12v2h8v-4H8v2zm10-5a1 1 0 100-2 1 1 0 000 2z"/></svg>
+        <span>Print</span>
+      </button>
+      <button id="btn-save" class="btn btn-ghost" type="button" title="Download build file">
+        <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M5 3h11l3 3v15a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1zm2 2v4h8V5H7zm5 13a3 3 0 100-6 3 3 0 000 6z"/></svg>
+        <span>Save</span>
+      </button>
+      <button id="btn-share" class="btn btn-yellow" type="button" title="Copy a shareable link">
+        <svg viewBox="0 0 24 24" class="ico" aria-hidden="true"><path d="M18 16a3 3 0 00-2.3 1.1l-6.8-3.4a3 3 0 000-1.4l6.8-3.4a3 3 0 10-.9-1.8L8 10.5a3 3 0 100 3l6.8 3.4A3 3 0 1018 16z"/></svg>
+        <span>Share</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN LAYOUT ============ -->
+  <div class="layout">
+
+    <!-- ---- SIDEBAR: PIECES ---- -->
+    <aside class="sidebar no-print" aria-label="Fort pieces">
+      <div class="panel">
+        <h2 class="panel-title"><span class="dot"></span>EXPEDITION KIT</h2>
+        <p class="panel-sub">Drag a part onto the build site. Tap a placed part to rotate or remove it.</p>
+        <div id="palette" class="palette"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title"><span class="dot"></span>PARTS CHECKLIST</h2>
+        <p class="panel-sub">Track every part against the official Epic Forts manifest.</p>
+        <ul id="checklist" class="checklist"></ul>
+        <div class="checklist-total">
+          <span>TOTAL PLACED</span>
+          <strong id="total-count">0 / 0</strong>
+        </div>
+        <div class="progress-rail"><div id="progress-fill" class="progress-fill"></div></div>
+      </div>
+    </aside>
+
+    <!-- ---- CANVAS: BUILD SITE ---- -->
+    <main class="stage" aria-label="Fort build canvas">
+      <div class="stage-head no-print">
+        <div class="stage-title-wrap">
+          <h1 class="stage-title">BASE CAMP BLUEPRINT</h1>
+          <span class="stage-coords" id="stage-coords">FIELD SITE · 0 PARTS</span>
+        </div>
+        <div class="stage-tools">
+          <label class="switch" title="Snap parts to the survey grid">
+            <input type="checkbox" id="snap-toggle" checked />
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">SNAP</span>
+          </label>
+          <button id="btn-clear" class="btn btn-danger" type="button">CLEAR SITE</button>
+        </div>
+      </div>
+
+      <div id="canvas" class="canvas" tabindex="0">
+        <div class="canvas-grid" aria-hidden="true"></div>
+        <div class="compass" aria-hidden="true">
+          <svg viewBox="0 0 100 100"><polygon points="50,8 58,50 50,46 42,50" fill="#d92b1f"/><polygon points="50,92 42,50 50,54 58,50" fill="#222"/><circle cx="50" cy="50" r="44" fill="none" stroke="#222" stroke-width="2"/><text x="50" y="20" text-anchor="middle" font-size="11" font-family="Oswald" fill="#222">N</text></svg>
+        </div>
+        <div id="canvas-empty" class="canvas-empty">
+          <svg viewBox="0 0 24 24" class="ico-big" aria-hidden="true"><path d="M12 2L2 8l10 6 10-6-10-6zm0 8.2L4.7 6 12 4l7.3 2L12 10.2zM2 16l10 6 10-6-2-1.2-8 4.8-8-4.8L2 16z"/></svg>
+          <p class="empty-title">Start your expedition build</p>
+          <p class="empty-sub">Drag walls, roofs, doors, tunnels &amp; clips from the kit onto this site.</p>
+        </div>
+        <!-- placed pieces injected here -->
+      </div>
+
+      <!-- Print-only manifest, hidden on screen -->
+      <section class="print-sheet" aria-hidden="true">
+        <h2 class="print-h2">EPIC FORTS — BUILD MANIFEST</h2>
+        <ul id="print-list" class="print-list"></ul>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- ============ HELP MODAL ============ -->
+  <div id="help-modal" class="modal-backdrop no-print" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <button class="modal-close" id="help-close" aria-label="Close">&times;</button>
+      <span class="natgeo-rect modal-rect" aria-hidden="true"></span>
+      <h2 id="help-title" class="modal-title">FIELD GUIDE</h2>
+      <ol class="guide-list">
+        <li><strong>Drag</strong> a part from the Expedition Kit onto the build site.</li>
+        <li><strong>Move</strong> a placed part by dragging it around the canvas.</li>
+        <li><strong>Tap</strong> a placed part to reveal rotate &amp; remove controls.</li>
+        <li><strong>Checklist</strong> updates live so you never lose a connector clip.</li>
+        <li><strong>Save</strong> downloads your blueprint; <strong>Share</strong> copies a link; <strong>Print</strong> makes a clean build sheet.</li>
+      </ol>
+      <p class="guide-foot">Forts are built for explorers. Build big. 🏕️</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
