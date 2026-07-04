@@ -1,0 +1,572 @@
+<title>Pick Driver — 3D-Printed Toothpick Holder</title>
+<style>
+  /* Deliberate single-theme design: a dark studio stage for the product shot. */
+  :root {
+    --bg: #0e1014;
+    --stage-hi: #272d38;
+    --panel: #15181e;
+    --line: #262b34;
+    --ink: #eceef2;
+    --ink-soft: #9aa3b0;
+    --accent: #ef8a37;
+    --accent-deep: #c96a1e;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  html { color-scheme: dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.55;
+  }
+
+  .hero { position: relative; height: 88vh; min-height: 540px; overflow: hidden; }
+  .stage-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 62% 55% at 50% 42%, var(--stage-hi) 0%, rgba(39,45,56,0) 70%),
+      radial-gradient(ellipse 40% 30% at 50% 46%, rgba(239,138,55,0.07) 0%, rgba(239,138,55,0) 70%),
+      var(--bg);
+  }
+  canvas#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: grab; }
+  canvas#gl.dragging { cursor: grabbing; }
+
+  .lockup { position: absolute; top: 6vh; left: 0; right: 0; text-align: center; pointer-events: none; padding: 0 20px; }
+  .lockup .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .34em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 10px;
+  }
+  .lockup h1 {
+    font-size: clamp(40px, 7vw, 76px); font-weight: 800; letter-spacing: -0.02em;
+    margin: 0; line-height: 1; text-wrap: balance;
+  }
+  .lockup p {
+    color: var(--ink-soft); max-width: 44ch; margin: 14px auto 0; font-size: 15.5px;
+  }
+
+  .mode {
+    position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
+    display: flex; background: rgba(21,24,30,0.82); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px; backdrop-filter: blur(6px);
+  }
+  .mode button {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+    background: none; border: none; color: var(--ink-soft); padding: 9px 22px;
+    border-radius: 999px; cursor: pointer;
+  }
+  .mode button.on { background: var(--accent); color: #16110b; font-weight: 700; }
+  .mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .drag-hint {
+    position: absolute; bottom: 44px; right: 30px; pointer-events: none;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--ink-soft); opacity: .8;
+  }
+
+  .callout {
+    position: absolute; pointer-events: none; opacity: 0; transition: opacity .45s ease;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--ink);
+    background: rgba(21,24,30,0.88); border: 1px solid var(--line); border-left: 2px solid var(--accent);
+    padding: 6px 10px; border-radius: 3px; white-space: nowrap; transform: translate(14px, -50%);
+  }
+  .callout small { display: block; color: var(--ink-soft); letter-spacing: .04em; }
+  .exploded .callout { opacity: 1; }
+
+  main { max-width: 1060px; margin: 0 auto; padding: 0 24px 90px; }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+    background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    margin-top: -1px;
+  }
+  .stats div { background: var(--panel); padding: 20px 18px 16px; }
+  .stats b {
+    display: block; font-family: var(--mono); font-size: 22px; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  }
+  .stats span { font-size: 12px; color: var(--ink-soft); letter-spacing: .04em; }
+
+  h2 {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 72px 0 22px;
+  }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 24px 22px; }
+  .card svg { display: block; margin-bottom: 14px; }
+  .card h3 { margin: 0 0 8px; font-size: 17px; letter-spacing: -.01em; }
+  .card p { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+
+  .print-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; align-items: stretch; }
+  @media (max-width: 720px) { .print-grid { grid-template-columns: 1fr; } }
+  .settings { display: grid; grid-template-columns: auto 1fr; gap: 8px 22px; margin: 0; align-content: start; }
+  .settings dt { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); letter-spacing: .06em; }
+  .settings dd { margin: 0; font-size: 14.5px; }
+  .dl-card { display: flex; flex-direction: column; justify-content: center; text-align: center; gap: 10px; }
+  .dl {
+    display: inline-block; background: var(--accent); color: #16110b; text-decoration: none;
+    font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    padding: 14px 26px; border-radius: 4px;
+  }
+  .dl:hover { background: #ff9c4b; }
+  .dl:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .dl-card small { color: var(--ink-soft); font-family: var(--mono); font-size: 11px; letter-spacing: .08em; }
+
+  @media (max-width: 700px) { .drag-hint { display: none; } }
+
+  footer {
+    border-top: 1px solid var(--line); margin-top: 80px; padding: 26px 0 0;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; color: var(--ink-soft);
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+</style>
+
+<div class="hero" id="hero">
+  <div class="stage-bg"></div>
+  <canvas id="gl" aria-label="Interactive 3D product render of the Pick Driver toothpick holder. Drag to spin."></canvas>
+
+  <div class="lockup">
+    <p class="eyebrow">3D-printed pocket tool</p>
+    <h1>Pick Driver</h1>
+    <p>A screwdriver for toothpicks. One pick chucks into the nose like a driver bit; twenty more ride inside the grip behind a screw cap.</p>
+  </div>
+
+  <div class="callout" id="co-tip">Bit socket<small>Ø 2.4 mm — pick wedges in</small></div>
+  <div class="callout" id="co-mag">Magazine<small>Ø 14.6 mm bore · ~20 picks</small></div>
+  <div class="callout" id="co-cap">Screw cap<small>2.5 mm trapezoid thread · 3 turns</small></div>
+
+  <div class="mode" role="group" aria-label="View mode">
+    <button id="btnAsm" class="on" type="button">Assembled</button>
+    <button id="btnExp" type="button">Exploded</button>
+  </div>
+  <div class="drag-hint">drag to spin</div>
+</div>
+
+<main>
+  <div class="stats">
+    <div><b>94 mm</b><span>tip to tail</span></div>
+    <div><b>Ø 21 mm</b><span>fluted grip</span></div>
+    <div><b>~20</b><span>picks stored</span></div>
+    <div><b>3 turns</b><span>to seal the cap</span></div>
+    <div><b>22 g</b><span>PLA, two parts</span></div>
+  </div>
+
+  <h2>How it works</h2>
+  <div class="features">
+    <div class="card">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true">
+        <circle cx="17" cy="17" r="11"/><circle cx="17" cy="17" r="2.6" fill="var(--accent)" stroke="none"/>
+      </svg>
+      <h3>Chuck a pick like a bit</h3>
+      <p>The tapered nose ends in a Ø 2.4 mm socket. Push a round toothpick in and its natural taper wedges tight — held straight and firm, swapped in a second.</p>
+    </div>
+    <div class="card">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true">
+        <rect x="10" y="4" width="14" height="26" rx="6"/><line x1="14" y1="9" x2="14" y2="25"/><line x1="17" y1="9" x2="17" y2="25"/><line x1="20" y1="9" x2="20" y2="25"/>
+      </svg>
+      <h3>Magazine in the grip</h3>
+      <p>The handle is hollow: a Ø 14.6 mm bore swallows about twenty standard 65 mm toothpicks, so the refill lives in your pocket with you.</p>
+    </div>
+    <div class="card">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" stroke="var(--accent)" stroke-width="1.6" aria-hidden="true">
+        <path d="M8 24c0-3 18-3 18-6s-18-3-18-6 18-3 18-6"/><line x1="8" y1="30" x2="26" y2="30"/>
+      </svg>
+      <h3>Screws shut, stays shut</h3>
+      <p>A scallop-knurled cap threads into the back of the handle on a coarse 2.5 mm trapezoid thread — printable at 0.2 mm layers, sealed in three easy turns.</p>
+    </div>
+  </div>
+
+  <h2>Print it</h2>
+  <div class="print-grid">
+    <div class="card">
+      <dl class="settings">
+        <dt>Parts</dt><dd>Handle + cap, both on one plate</dd>
+        <dt>Supports</dt><dd>None — handle stands on its mouth, cap prints knob-down</dd>
+        <dt>Layer</dt><dd>0.2 mm</dd>
+        <dt>Walls</dt><dd>3 perimeters</dd>
+        <dt>Infill</dt><dd>15–20 %</dd>
+        <dt>Material</dt><dd>PLA or PETG, ~22 g</dd>
+        <dt>Fit tuning</dt><dd>Thread clearance and socket grip are single constants in the parametric generator</dd>
+      </dl>
+    </div>
+    <div class="card dl-card">
+      <div><a class="dl" id="dlBtn" href="#" download="toothpick_holder.stl">Download STL</a></div>
+      <small id="dlSize">binary STL · millimetres</small>
+    </div>
+  </div>
+
+  <footer>
+    <span>Parametric model · trimesh + numpy</span>
+    <span>Rendered live in raw WebGL — geometry rebuilt in your browser</span>
+  </footer>
+</main>
+
+<script>
+"use strict";
+/* ================= parametric geometry (mirrors generate_toothpick_holder.py) ================= */
+const PITCH = 2.5, DEPTH = 1.0, MALE_CORE = 7.0, CLEAR = 0.3, THREAD_LEN = 8.0;
+const BODY_H = 94, GRIP_R = 10.5, NOSE_Z = 76, NOSE_TIP_R = 4.5;
+const BORE_R = MALE_CORE + CLEAR, CONE_Z0 = 76, CONE_Z1 = 82, SOCKET_R = 1.2;
+const FLUTES = 9, FLUTE_D = 0.45;
+const KNOB_R = 11, KNOB_H = 6, COLLAR_R = 7.6, CAP_H = 15, SCALLOPS = 12;
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+function fTrap(p) {
+  p = ((p % 1) + 1) % 1;
+  return Math.min(clamp((p - 0.2) / 0.2, 0, 1), clamp((0.8 - p) / 0.2, 0, 1));
+}
+const threadR = (core, th, z, env) => core + DEPTH * fTrap(z / PITCH - th / TAU) * env;
+
+function bodyOuter(th, z) {
+  if (z <= NOSE_Z) {
+    const env = clamp(Math.min((z - 14) / 6, (64 - z) / 6, 1), 0, 1);
+    return GRIP_R - FLUTE_D * (0.5 + 0.5 * Math.cos(FLUTES * th)) * env;
+  }
+  return GRIP_R - (GRIP_R - NOSE_TIP_R) * (z - NOSE_Z) / (BODY_H - NOSE_Z);
+}
+function bodyInner(th, z) {
+  if (z <= THREAD_LEN) {
+    const env = clamp((THREAD_LEN - z) / 1.0, 0, 1);
+    const flare = Math.max(0, 1.0 - z) * 0.6;
+    return threadR(BORE_R, th, z, env) + flare;
+  }
+  if (z <= CONE_Z0) return BORE_R;
+  if (z <= CONE_Z1) return BORE_R - (BORE_R - SOCKET_R) * (z - CONE_Z0) / (CONE_Z1 - CONE_Z0);
+  return SOCKET_R;
+}
+function capOuter(th, z) {
+  if (z <= KNOB_H) return KNOB_R + 0.5 * Math.cos(SCALLOPS * th);
+  if (z <= KNOB_H + 1) {
+    const t = z - KNOB_H;
+    return KNOB_R + (COLLAR_R - KNOB_R) * t + 0.5 * Math.cos(SCALLOPS * th) * (1 - t);
+  }
+  const env = clamp(Math.min((z - KNOB_H - 1) / 1.0, (CAP_H - z) / 2.0, 1), 0, 1);
+  return threadR(MALE_CORE, th, z, env);
+}
+function pickR(th, z) { // 65 mm round toothpick, both ends pointed
+  if (z <= 4) return 0.12 + (1.05 - 0.12) * z / 4;
+  if (z <= 61) return 1.05;
+  return 0.12 + (1.05 - 0.12) * (65 - z) / 4;
+}
+
+function zRows(segs) { // [[z0,z1,step],...] -> sorted unique + final endpoint
+  const out = [];
+  for (const [z0, z1, st] of segs) for (let z = z0; z < z1 - 1e-6; z += st) out.push(z);
+  out.push(segs[segs.length - 1][1]);
+  return [...new Set(out.map(z => Math.round(z * 1e4) / 1e4))].sort((a, b) => a - b);
+}
+
+/* triangle-soup builders */
+function soup() { return { p: [] }; }
+function tri(s, a, b, c) { s.p.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]); }
+function rings(zs, rfn, thN) {
+  return zs.map(z => {
+    const ring = [];
+    for (let j = 0; j < thN; j++) {
+      const th = j * TAU / thN, r = rfn(th, z);
+      ring.push([r * Math.cos(th), r * Math.sin(th), z]);
+    }
+    return ring;
+  });
+}
+function wall(s, R, flip) {
+  const thN = R[0].length;
+  for (let i = 0; i < R.length - 1; i++) for (let j = 0; j < thN; j++) {
+    const j1 = (j + 1) % thN, a = R[i][j], b = R[i][j1], c = R[i+1][j1], d = R[i+1][j];
+    if (flip) { tri(s, a, c, b); tri(s, a, d, c); } else { tri(s, a, b, c); tri(s, a, c, d); }
+  }
+}
+function annulus(s, Ro, Ri, up) { // stitch outer ring to inner ring at same z
+  const thN = Ro.length;
+  for (let j = 0; j < thN; j++) {
+    const j1 = (j + 1) % thN;
+    if (up) { tri(s, Ro[j], Ro[j1], Ri[j1]); tri(s, Ro[j], Ri[j1], Ri[j]); }
+    else    { tri(s, Ro[j], Ri[j1], Ro[j1]); tri(s, Ro[j], Ri[j], Ri[j1]); }
+  }
+}
+function fan(s, R, z, down) {
+  const thN = R.length, c = [0, 0, z];
+  for (let j = 0; j < thN; j++) {
+    const j1 = (j + 1) % thN;
+    if (down) tri(s, c, R[j1], R[j]); else tri(s, c, R[j], R[j1]);
+  }
+}
+function buildTube(zOut, rOut, zIn, rIn, thN) {
+  const s = soup(), Ro = rings(zOut, rOut, thN), Ri = rings(zIn, rIn, thN);
+  wall(s, Ro, false); wall(s, Ri, true);
+  annulus(s, Ro[0], Ri[0], false);
+  annulus(s, Ro[Ro.length-1], Ri[Ri.length-1], true);
+  return new Float32Array(s.p);
+}
+function buildSolid(zs, rfn, thN) {
+  const s = soup(), R = rings(zs, rfn, thN);
+  wall(s, R, false);
+  fan(s, R[0], zs[0], true);
+  fan(s, R[R.length-1], zs[zs.length-1], false);
+  return new Float32Array(s.p);
+}
+
+/* auto-smooth vertex normals: weld by position, split at creases > ~50 deg */
+function smoothNormals(pos) {
+  const nT = pos.length / 9;
+  const fN = new Float32Array(nT * 3), fU = new Float32Array(nT * 3);
+  for (let t = 0; t < nT; t++) {
+    const o = t * 9;
+    const ux = pos[o+3]-pos[o], uy = pos[o+4]-pos[o+1], uz = pos[o+5]-pos[o+2];
+    const vx = pos[o+6]-pos[o], vy = pos[o+7]-pos[o+1], vz = pos[o+8]-pos[o+2];
+    const nx = uy*vz-uz*vy, ny = uz*vx-ux*vz, nz = ux*vy-uy*vx;
+    fN[t*3] = nx; fN[t*3+1] = ny; fN[t*3+2] = nz;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    fU[t*3] = nx/l; fU[t*3+1] = ny/l; fU[t*3+2] = nz/l;
+  }
+  const map = new Map();
+  const key = i => (Math.round(pos[i]*2e3)) + "," + (Math.round(pos[i+1]*2e3)) + "," + (Math.round(pos[i+2]*2e3));
+  for (let c = 0; c < nT * 3; c++) {
+    const k = key(c * 3);
+    let arr = map.get(k); if (!arr) map.set(k, arr = []);
+    arr.push(c);
+  }
+  const out = new Float32Array(pos.length);
+  const COS = Math.cos(50 * Math.PI / 180);
+  for (let c = 0; c < nT * 3; c++) {
+    const t = (c / 3) | 0, k = key(c * 3), grp = map.get(k);
+    let sx = 0, sy = 0, sz = 0;
+    const ax = fU[t*3], ay = fU[t*3+1], az = fU[t*3+2];
+    for (const c2 of grp) {
+      const t2 = (c2 / 3) | 0;
+      if (ax*fU[t2*3] + ay*fU[t2*3+1] + az*fU[t2*3+2] > COS) {
+        sx += fN[t2*3]; sy += fN[t2*3+1]; sz += fN[t2*3+2];
+      }
+    }
+    const l = Math.hypot(sx, sy, sz) || 1;
+    out[c*3] = sx/l; out[c*3+1] = sy/l; out[c*3+2] = sz/l;
+  }
+  return out;
+}
+
+/* build the three parts */
+const TH = 192, TH_PICK = 48;
+const bodyPos = buildTube(
+  zRows([[0, 76, 2], [76, BODY_H, 1.5]]), bodyOuter,
+  zRows([[0, 9.5, 0.12], [9.5, 76, 4], [76, 82, 0.75], [82, BODY_H, 3]]), bodyInner, TH);
+const capPos = buildSolid(zRows([[0, 6, 1.5], [6, 7, 0.2], [7, CAP_H, 0.12]]), capOuter, TH);
+const pickPos = buildSolid(zRows([[0, 4, 1], [4, 61, 8], [61, 65, 1]]), pickR, TH_PICK);
+const bodyNrm = smoothNormals(bodyPos), capNrm = smoothNormals(capPos), pickNrm = smoothNormals(pickPos);
+
+/* ================= WebGL ================= */
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: true });
+
+const VS = `
+attribute vec3 aPos; attribute vec3 aNrm;
+uniform mat4 uProj, uView, uModel;
+varying vec3 vN, vP;
+void main() {
+  vec4 w = uModel * vec4(aPos, 1.0);
+  vec4 e = uView * w;
+  vP = e.xyz;
+  vN = mat3(uView[0].xyz, uView[1].xyz, uView[2].xyz) *
+       mat3(uModel[0].xyz, uModel[1].xyz, uModel[2].xyz) * aNrm;
+  gl_Position = uProj * e;
+}`;
+const FS = `
+precision mediump float;
+varying vec3 vN, vP;
+uniform vec3 uAlbedo;      /* linear */
+uniform vec2 uSpec;        /* strength, shininess */
+void main() {
+  vec3 N = normalize(vN);
+  if (!gl_FrontFacing) N = -N;
+  vec3 V = normalize(-vP);
+  /* studio rig, eye space: warm key upper-left, cool fill right, rim top-back */
+  vec3 Lk = normalize(vec3(-0.55, 0.75, 0.55));
+  vec3 Lf = normalize(vec3( 0.85, 0.10, 0.40));
+  vec3 Lr = normalize(vec3( 0.10, 0.65, -0.75));
+  vec3 kC = vec3(1.00, 0.93, 0.84) * 1.45;
+  vec3 fC = vec3(0.62, 0.70, 0.85) * 0.50;
+  vec3 rC = vec3(0.85, 0.90, 1.00) * 1.0;
+  float hemi = 0.5 + 0.5 * N.y;
+  vec3 amb = mix(vec3(0.075, 0.06, 0.05), vec3(0.13, 0.14, 0.17), hemi);
+  vec3 col = uAlbedo * (amb
+           + kC * max(dot(N, Lk), 0.0)
+           + fC * max(dot(N, Lf), 0.0));
+  float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+  col += rC * rim * max(dot(N, Lr), 0.0);
+  vec3 Hk = normalize(Lk + V);
+  col += kC * uSpec.x * pow(max(dot(N, Hk), 0.0), uSpec.y);
+  vec3 Hr = normalize(Lr + V);
+  col += rC * uSpec.x * 0.6 * pow(max(dot(N, Hr), 0.0), uSpec.y * 1.5);
+  col = pow(col, vec3(1.0 / 2.2));
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+function prog(v, f) {
+  const p = gl.createProgram();
+  for (const [ty, src] of [[gl.VERTEX_SHADER, v], [gl.FRAGMENT_SHADER, f]]) {
+    const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s);
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p); return p;
+}
+const P = prog(VS, FS);
+const loc = n => gl.getUniformLocation(P, n);
+const aPos = gl.getAttribLocation(P, "aPos"), aNrm = gl.getAttribLocation(P, "aNrm");
+
+function part(pos, nrm) {
+  const pb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, pb); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+  const nb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, nb); gl.bufferData(gl.ARRAY_BUFFER, nrm, gl.STATIC_DRAW);
+  return { pb, nb, n: pos.length / 3 };
+}
+const PARTS = {
+  body: part(bodyPos, bodyNrm),
+  cap: part(capPos, capNrm),
+  pick: part(pickPos, pickNrm),
+};
+
+const lin = hex => {
+  const n = parseInt(hex.slice(1), 16);
+  return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255].map(c => Math.pow(c, 2.2));
+};
+const MAT = {
+  body: { albedo: lin("#e0782c"), spec: [0.35, 42] },
+  cap:  { albedo: lin("#48505c"), spec: [0.40, 48] },
+  pick: { albedo: lin("#d9b98c"), spec: [0.08, 10] },
+  pickStored: { albedo: lin("#c9a678"), spec: [0.08, 10] },
+};
+
+/* mat4 helpers (column-major) */
+const I = () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+function mul(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+    let s = 0; for (let k = 0; k < 4; k++) s += a[k*4+r] * b[c*4+k];
+    o[c*4+r] = s;
+  }
+  return o;
+}
+const T = (x,y,z) => { const m = I(); m[12]=x; m[13]=y; m[14]=z; return m; };
+const RX = t => { const m=I(),c=Math.cos(t),s=Math.sin(t); m[5]=c;m[6]=s;m[9]=-s;m[10]=c; return m; };
+const RZ = t => { const m=I(),c=Math.cos(t),s=Math.sin(t); m[0]=c;m[1]=s;m[4]=-s;m[5]=c; return m; };
+function persp(fov, asp, n, f) {
+  const t = 1/Math.tan(fov/2), o = new Float32Array(16);
+  o[0]=t/asp; o[5]=t; o[10]=(f+n)/(n-f); o[11]=-1; o[14]=2*f*n/(n-f);
+  return o;
+}
+
+/* ================= scene state ================= */
+let yaw = 0.7, pitch = 0.42, interacted = false;
+let explode = 0, explodeTarget = 0;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const hero = document.getElementById("hero");
+const btnAsm = document.getElementById("btnAsm"), btnExp = document.getElementById("btnExp");
+function setMode(exp) {
+  explodeTarget = exp ? 1 : 0;
+  btnAsm.classList.toggle("on", !exp);
+  btnExp.classList.toggle("on", exp);
+  hero.classList.toggle("exploded", exp);
+}
+btnAsm.addEventListener("click", () => setMode(false));
+btnExp.addEventListener("click", () => setMode(true));
+
+let dragging = false, px = 0, py = 0;
+canvas.addEventListener("pointerdown", e => {
+  dragging = true; interacted = true; px = e.clientX; py = e.clientY;
+  canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  yaw += (e.clientX - px) * 0.008;
+  pitch = clamp(pitch + (e.clientY - py) * 0.006, 0.12, 2.6);
+  px = e.clientX; py = e.clientY;
+});
+canvas.addEventListener("pointerup", () => { dragging = false; canvas.classList.remove("dragging"); });
+canvas.addEventListener("dblclick", () => { yaw = 0.7; pitch = 0.42; });
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+}
+new ResizeObserver(resize).observe(canvas);
+
+/* callouts anchored to 3D points */
+const CO = [
+  { el: document.getElementById("co-tip"), pt: () => [3, 0, 110 + 20 * explode] },
+  { el: document.getElementById("co-mag"), pt: () => [GRIP_R, 0, 44] },
+  { el: document.getElementById("co-cap"), pt: () => [KNOB_R, 0, -10 - 55 * explode] },
+];
+
+function draw(one) {
+  resize();
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.enable(gl.DEPTH_TEST);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(P);
+
+  const asp = canvas.width / canvas.height;
+  /* long-lens product framing, seated below the title lockup */
+  const cz = 62 - 5 * explode;
+  const dist = 600 + 200 * explode;
+  const proj = persp(0.42, asp, 5, 3000);
+  const view = mul(T(0, -30 + 12 * explode, -dist), mul(RX(pitch - Math.PI / 2), mul(RZ(yaw), T(0, 0, -cz))));
+  gl.uniformMatrix4fv(loc("uProj"), false, proj);
+  gl.uniformMatrix4fv(loc("uView"), false, view);
+
+  const drawPart = (p, mat, model) => {
+    gl.uniformMatrix4fv(loc("uModel"), false, model);
+    gl.uniform3f(loc("uAlbedo"), ...mat.albedo);
+    gl.uniform2f(loc("uSpec"), ...mat.spec);
+    gl.bindBuffer(gl.ARRAY_BUFFER, p.pb); gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, p.nb); gl.enableVertexAttribArray(aNrm);
+    gl.vertexAttribPointer(aNrm, 3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, p.n);
+  };
+
+  const e = explode;
+  drawPart(PARTS.body, MAT.body, I());
+  /* cap: seated plug-up under the mouth; unscrews down and spins out */
+  drawPart(PARTS.cap, MAT.cap, mul(T(0, 0, -7 - 58 * e), RZ(-e * 4 * Math.PI)));
+  /* the chucked pick rides in the tip socket, pulls out on explode */
+  drawPart(PARTS.pick, MAT.pick, T(0, 0, 82 + 25 * e));
+  /* stored picks slide out of the mouth */
+  const offs = [[0,0],[2.95,0],[1.47,2.55],[-1.47,2.55],[-2.95,0],[-1.47,-2.55],[1.47,-2.55]];
+  for (let i = 0; i < offs.length; i++) {
+    const jit = (i * 37 % 11) - 5;
+    drawPart(PARTS.pick, MAT.pickStored, T(offs[i][0], offs[i][1], 8 - (41 + jit) * e));
+  }
+
+  /* project callout anchors */
+  const rect = canvas.getBoundingClientRect();
+  const mvp = mul(proj, view);
+  for (const c of CO) {
+    const [x, y, z] = c.pt();
+    const cx = mvp[0]*x + mvp[4]*y + mvp[8]*z + mvp[12];
+    const cy = mvp[1]*x + mvp[5]*y + mvp[9]*z + mvp[13];
+    const cw = mvp[3]*x + mvp[7]*y + mvp[11]*z + mvp[15];
+    c.el.style.left = ((cx / cw * 0.5 + 0.5) * rect.width) + "px";
+    c.el.style.top = ((-cy / cw * 0.5 + 0.5) * rect.height) + "px";
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!interacted && !dragging && !reduceMotion) yaw += dt * 0.25;
+  explode += (explodeTarget - explode) * Math.min(1, dt * 4.5);
+  if (Math.abs(explodeTarget - explode) < 0.001) explode = explodeTarget;
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ================= STL download (the actual print file, embedded) ================= */
+const STL_B64 = "__STL_BASE64__";
+(function () {
+  const bin = atob(STL_B64), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const blob = new Blob([buf.buffer], { type: "model/stl" });
+  document.getElementById("dlBtn").href = URL.createObjectURL(blob);
+  document.getElementById("dlSize").textContent = Math.round(buf.length / 1024) + " KB · binary STL · millimetres";
+})();
+</script>
